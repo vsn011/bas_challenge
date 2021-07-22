@@ -1,3 +1,7 @@
+--Timebooking staging where we join Employee and TimeBooking tables and remove duplicate entries from TimeBooking
+--granularity on Employee level per day
+--by using select distinct on we filter out duplicate row from TibeBooking table based on distinct combination of EmpID, Date, SLA and Hours booked
+
 create table if not exists homework.timebooking_staging ( "Employee ID" text not null,
 "SLA" text not null,
 "Date" timestamp not null,
