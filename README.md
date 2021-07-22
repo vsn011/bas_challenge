@@ -1,11 +1,12 @@
 # bas_challenge
 
-Project structure
+**Project structure**
 
 For this project I used PostgreSQL database hosted inside a Docker container and used Python script to load the file into the database. However, for the purpose of this challenge I will describe loading process for the given tables on a conceptual level, tool independent. 
 
-Table Design
+Important notice - Since PostgreSQL is case sensitive, quitation marks are required around column names that contain capital letters (example "Budget"), or column names that use key words (example "year"), while string are marked with single quote (').
 
+**Table Design**
 
 Initialy 5 tables have been loaded: 
 
@@ -20,7 +21,7 @@ In case that we want to trace retroactive changes and update certain values, we 
 ![image](https://user-images.githubusercontent.com/56403895/126695839-86e448de-f5da-439c-9da3-79c7db595d72.png)
 
 
-Data Healtcheck
+**Data Healtcheck**
 
 Upon the initial data load, we undertake several steps to check data health:
 
@@ -76,19 +77,26 @@ S01	2021-12-31	2021-11-30
 S05	2021-12-31	2021-11-30
 
 
-Second Stage Table Load 
+**Second Stage Table Load **
 
 After we have performed Data healtcheck, we proceed to the second stage load where we join tables. 
 
 1. Employee table is added to the TimeBooking table by left join ( on	e."Employee ID" = tb."Employee ID" and tb."Date" between e."StartDate" and e."EndDate")
 While performing join, by using PostgreSQL Select Distinct ON ("Employee ID","SLA","Date","Hours"), we filter out duplicate entries from TimeBooking table.
-At the same time we aggregate data on a daily level per employee by doing sum of Hours column from the same table. 
+At the same time we aggregate data on a daily level per employee by doing sum of Hours column from the same table. Also, we calculated booked_amount (Hours* Hourly Rate).
+Granularity is on a daily level per Employee, since we booked hours on a daily level. Load would be incremental (where Data >= last_load_date).
 
 For detailed code see timebooking_staging.sql file. 
 
-2. 
+2. Customer, SLAs and Customer2SLA tables have been joined into sla_staging table ("SLAs" s left join Customer2SLA cs on SLA ID and Start Date and left join Customer on Customer ID). 
+Here we calculated SLA duration in months, SLA budget per month (Budget / number of Months), total allocation of an SLA and flaged SLAs where total allocation is not 100%, and also calculated customer budget (Budget * Allocation). Granularity is on SLA period level. Load would be incremental (Start Date >= last_load_date). 
 
-Data Validation
+For detailed code see sla_staging.sql
+
+![image](https://user-images.githubusercontent.com/56403895/126714916-8959c622-9ec5-4bc3-8ec6-88cd0a6944f6.png)
+
+**
+Data Validation**
 
 1. Checking if the Budget for a certain SLA has been breached after we removed duplicate booking entries. 
 
@@ -106,8 +114,6 @@ order by "SLA"
 ) t
 where used_budget > "Budget"
 order by  utilization_rate desc;
-
-(In PostgreSQL quitation mark refers to the column like in "Budget", not the string)
 
 Sample result:
 S05	2020	79360	12000	6.61
