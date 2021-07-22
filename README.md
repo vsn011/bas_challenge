@@ -77,7 +77,7 @@ S01	2021-12-31	2021-11-30
 S05	2021-12-31	2021-11-30
 
 
-**Second Stage Table Load **
+**Second Stage Table Load**
 
 After we have performed the Data health check, we proceed to the second stage load where we join tables. 
 
@@ -95,8 +95,7 @@ For detailed code see sla_staging.sql
 
 ![image](https://user-images.githubusercontent.com/56403895/126714916-8959c622-9ec5-4bc3-8ec6-88cd0a6944f6.png)
 
-**
-Data Validation**
+**Data Validation**
 
 1. Checking if the Budget for a certain SLA has been breached after we removed duplicate booking entries. 
 
@@ -137,7 +136,7 @@ E01	S05	4	2021-12-24 00:00:00
 E02	S05	5	2021-12-04 00:00:00		
 
 
-5 SLAs  by budget utilization for June 2021: 
+**5 SLAs  by budget utilization for June 2021:** 
 
 S05	2021	11900	3818	3.12
 S03	2021	3850	1250	3.08
@@ -147,7 +146,7 @@ S04	2021	7000	13333	0.53
 
 
 
-Budget utilization per SLA in 2021 for the Customer with the lowest Budget utilization rate in 2020
+**Budget utilization per SLA in 2021 for the Customer with the lowest Budget utilization rate in 2020**
 
 The customer with the lowest Budget utilization rate in 2020 is C01. The budget utilization rate of this Customer per SLA for 20201 is: 
 C01	S04	2021	72800	105600	0.69
