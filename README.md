@@ -6,7 +6,7 @@ For this project, I used a PostgreSQL database hosted inside a Docker container 
 
 Important notice - Since PostgreSQL is case sensitive, quitation marks are required around column names that contain capital letters (example "Budget"), or column names that use keywords (example "year"), while strings are marked with a single quote (').
 
-**Table Design**
+**1. and 2. Table Design and Load**
 
 Initially, 5 tables have been loaded: 
 
@@ -20,8 +20,25 @@ In case that we want to trace retroactive changes and update certain values, we 
 
 ![image](https://user-images.githubusercontent.com/56403895/126695839-86e448de-f5da-439c-9da3-79c7db595d72.png)
 
+**Second Stage Table Load**
 
-**Data Healtcheck**
+After we have performed the Data health check, we proceed to the second stage load where we join tables. 
+
+1. Employee table is added to the TimeBooking table by left join ( on	e."Employee ID" = tb."Employee ID" and tb."Date" between e."StartDate" and e."EndDate")
+While performing join, by using PostgreSQL Select Distinct ON ("Employee ID","SLA","Date","Hours"), we filter out duplicate entries from the TimeBooking table.
+At the same time we aggregate data on a daily level per employee by doing the sum of Hours column from the same table. Also, we calculated booked_amount (Hours* Hourly Rate).
+Granularity is on a daily level per Employee since we booked hours on a daily level. Load would be incremental (where Data >= last_load_date).
+
+For detailed code see timebooking_staging.sql file. 
+
+2. Customer, SLAs and Customer2SLA tables have been joined into sla_staging table ("SLAs" s left join Customer2SLA cs on SLA ID and Start Date and left join Customer on Customer ID). 
+Here we calculated SLA duration in months, SLA budget per month (Budget/number of Months), the total allocation of an SLA and flagged SLAs where total allocation is not 100%, and also calculated customer budget (Budget * Allocation). Granularity is on SLA period level. Load would be incremental (Start Date >= last_load_date). 
+
+For detailed code see sla_staging.sql
+
+![image](https://user-images.githubusercontent.com/56403895/126714916-8959c622-9ec5-4bc3-8ec6-88cd0a6944f6.png)
+
+**3. Data Healtcheck and Validation**
 
 Upon the initial data load, we undertake several steps to check data health:
 
@@ -77,27 +94,7 @@ S01	2021-12-31	2021-11-30
 S05	2021-12-31	2021-11-30
 
 
-**Second Stage Table Load**
-
-After we have performed the Data health check, we proceed to the second stage load where we join tables. 
-
-1. Employee table is added to the TimeBooking table by left join ( on	e."Employee ID" = tb."Employee ID" and tb."Date" between e."StartDate" and e."EndDate")
-While performing join, by using PostgreSQL Select Distinct ON ("Employee ID","SLA","Date","Hours"), we filter out duplicate entries from the TimeBooking table.
-At the same time we aggregate data on a daily level per employee by doing the sum of Hours column from the same table. Also, we calculated booked_amount (Hours* Hourly Rate).
-Granularity is on a daily level per Employee since we booked hours on a daily level. Load would be incremental (where Data >= last_load_date).
-
-For detailed code see timebooking_staging.sql file. 
-
-2. Customer, SLAs and Customer2SLA tables have been joined into sla_staging table ("SLAs" s left join Customer2SLA cs on SLA ID and Start Date and left join Customer on Customer ID). 
-Here we calculated SLA duration in months, SLA budget per month (Budget/number of Months), the total allocation of an SLA and flagged SLAs where total allocation is not 100%, and also calculated customer budget (Budget * Allocation). Granularity is on SLA period level. Load would be incremental (Start Date >= last_load_date). 
-
-For detailed code see sla_staging.sql
-
-![image](https://user-images.githubusercontent.com/56403895/126714916-8959c622-9ec5-4bc3-8ec6-88cd0a6944f6.png)
-
-**Data Validation**
-
-1. Checking if the Budget for a certain SLA has been breached after we removed duplicate booking entries. 
+4. Checking if the Budget for a certain SLA has been breached after we removed duplicate booking entries. 
 
 select distinct  "SLA", SLA_YEAR, used_budget, "Budget", round(used_budget/ "Budget", 2) as utilization_rate   from(
 SELECT 
@@ -121,7 +118,7 @@ S05	2021	85400	42000	2.03
 S04	2020	80960	55000	1.47
 S02	2021	85400	65500	1.30
 
-2. Checking if there were booking entries outside the valid SLA period, that is after an SLA has been ended. 
+5. Checking if there were booking entries outside the valid SLA period, that is after an SLA has been ended. 
 
 select "Employee ID", "SLA", "Hours", "Date", "StartDate", "EndDate" from homework."TimeBooking" tb 
 left join homework."SLAs" s on s."SLA ID" = tb."SLA" and "Date" between "StartDate"  and "EndDate" 
@@ -136,7 +133,7 @@ E01	S05	4	2021-12-24 00:00:00
 E02	S05	5	2021-12-04 00:00:00		
 
 
-**5 SLAs  by budget utilization for June 2021:** 
+**4. 5 SLAs  by budget utilization for June 2021:** 
 
 S05	2021	11900	3818	3.12
 S03	2021	3850	1250	3.08
@@ -146,7 +143,7 @@ S04	2021	7000	13333	0.53
 
 
 
-**Budget utilization per SLA in 2021 for the Customer with the lowest Budget utilization rate in 2020**
+**5. Budget utilization per SLA in 2021 for the Customer with the lowest Budget utilization rate in 2020**
 
 The customer with the lowest Budget utilization rate in 2020 is C01. The budget utilization rate of this Customer per SLA for 20201 is: 
 C01	S04	2021	72800	105600	0.69
