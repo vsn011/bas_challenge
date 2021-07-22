@@ -1,13 +1,13 @@
 --data validation scripts:
---finding duplicate entries in the Booking table
 
+--finding duplicate entries in the Booking table
 select  "Employee ID", "Hours", "SLA", "Date", extract(year from "Date") as "year", count(*) as no_of_rows from homework."TimeBooking" tb 
 group by "Employee ID", "Hours", "SLA", "Date", extract(year from "Date")
 having count(*) > 1
 limit 5
---send those rows into a table 
---counting duplicate hours per SLA & Year
 
+ 
+--counting duplicate hours per SLA & Year
 select distinct "SLA", "year", sum("Hours") from (
 select count(*) as no_of_rows, "Employee ID", "Hours", "SLA", "Date", extract(year from "Date") as "year" from homework."TimeBooking" tb 
 group by "Employee ID", "Hours", "SLA", "Date", extract(year from "Date")
@@ -17,7 +17,6 @@ group by "SLA", "year"
 order by "SLA", "year"
 
 --checking if Allocation for SLA is not 100 percent
-
 select "SLA ID", extract(year from "StartDate") as "year", total_allocation from (
 
 select *,
@@ -46,7 +45,6 @@ where Customer2SLA_end <> SLAs_end
 
 
 --checking if the Budget for a certain SLA has been breached
-
 select distinct  "SLA", SLA_YEAR, used_budget, "Budget", round(used_budget/ "Budget", 2) as utilization_rate   from(
 SELECT 
 "SLA", 
@@ -64,7 +62,6 @@ order by  utilization_rate desc;
 
 
 --checking if there were bookings outside valid SLA period
-
 select "Employee ID", "SLA", "Hours", "Date", "StartDate", "EndDate" from homework."TimeBooking" tb 
 left join homework."SLAs" s on s."SLA ID" = tb."SLA" and "Date" between "StartDate"  and "EndDate" 
 where "StartDate" is null or "EndDate" is null
