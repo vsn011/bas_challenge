@@ -9,7 +9,7 @@ Table Design
 
 Initialy 5 tables have been loaded: 
 
-1. Employee - containing data about the employee (Employee ID) and hourly rate (Hourly Rate) for that employee for the given period (Start - End date). This table would be loaded incrementaly based on the Start date (where Start date >= last_load_date). Load on start date has been set on purpose since there should not be retroactive changes in previously invoiced period. Granularity is on the Hourly Rate level for the given period. 
+1. Employee - containing data about the employee (Employee ID) and hourly rate (Hourly Rate) for that employee for the given period (Start - End date). This table would be loaded incrementally based on the Start date (where Start date >= last_load_date). Load on start date has been set on purpose since there should not be retroactive changes in previously invoiced period. Granularity is on the Hourly Rate level for the given period. 
 2. TimeBooking - containing data about hourly entries (Hours) of an Employee (Employee ID) for a given SLA (SLA) on a daily level (Date). This table would be loaded incrementaly based on the Date column (where Date >= last_loat_date). Granularity is on an entry level (hours booked by an Employee per SLA per Day).
 3. Customers - containing data about customers (Customer ID, Customer). Full load, as it is not expected that this table has often changes or that many rows. Granularuty level is per customer.
 4. SLA - containing data about SLAs (SLA ID) for the given period (Start - End date) and the Budget for that period (Budget). This table would be loaded incrementaly based on the Start Date column (where Start date >= last_load_date). Granularity is on a SLA level for the given period, that is on the SLA period level. This is under hypothesis that the Budget should be planned in advanced, without retroactive changes. 
@@ -22,7 +22,7 @@ In case that we want to trace retroactive changes and update certain values, we 
 
 Data Healtcheck
 
-Upon the initial data load, we undertake several steps to check data quailty:
+Upon the initial data load, we undertake several steps to check data health:
 
 1. Checking for duplicate entries in TimeBooking table. Those duplicates will be filtered out in the second stage load where we do denormalization. 
 -If there is more then one distinct combination of "Employee ID", "Hours", "SLA", "Date", we consider that to be a duplicate:
@@ -81,7 +81,12 @@ Second Stage Table Load
 After we have performed Data healtcheck, we proceed to the second stage load where we join tables. 
 
 1. Employee table is added to the TimeBooking table by left join ( on	e."Employee ID" = tb."Employee ID" and tb."Date" between e."StartDate" and e."EndDate")
+While performing join, by using PostgreSQL Select Distinct ON ("Employee ID","SLA","Date","Hours"), we filter out duplicate entries from TimeBooking table.
+At the same time we aggregate data on a daily level per employee by doing sum of Hours column from the same table. 
 
+For detailed code see timebooking_staging.sql file. 
+
+2. 
 
 Data Validation
 
@@ -101,6 +106,8 @@ order by "SLA"
 ) t
 where used_budget > "Budget"
 order by  utilization_rate desc;
+
+(In PostgreSQL quitation mark refers to the column like in "Budget", not the string)
 
 Sample result:
 S05	2020	79360	12000	6.61
@@ -122,3 +129,40 @@ E02	S01	2	2021-12-19 00:00:00
 E02	S05	2	2021-12-20 00:00:00		
 E01	S05	4	2021-12-24 00:00:00		
 E02	S05	5	2021-12-04 00:00:00		
+
+
+
+
+
+
+Budget utilization per SLA in 2021 for the Customer with lowest Budget utilization rate in 2020: 
+C01	S04	2021	72800	105600	0.69
+C01	S05	2021	85400	37800	2.26
+
+SELECT 
+cls."Customer ID",
+"SLA", 
+cls."year",
+SUM(booked_amount) as used_budget,
+customer_budget,
+round(SUM(booked_amount)/ customer_budget, 2) as utilization_rate
+FROM homework.timebooking_staging tb
+inner join homework.sla_staging cls on cls."SLA ID" = tb."SLA" and tb."Date" between cls."StartDate" and cls."EndDate" 
+inner join  (
+select  "Customer ID"  from (
+SELECT 
+cls."Customer ID",
+cls."year",
+sum(booked_amount) as booked_amount,
+customer_budget,
+round(SUM(booked_amount)/ customer_budget, 2) as utilization_rate
+FROM homework.timebooking_staging tb
+inner join homework.sla_staging cls on cls."SLA ID" = tb."SLA" and tb."Date" between cls."StartDate" and cls."EndDate"
+where to_char(tb."Date", 'YYYY') = '2020'
+group by cls."Customer ID", cls."year", customer_budget
+) t
+order by  utilization_rate asc
+limit 1
+) p on p."Customer ID" = cls."Customer ID" 
+where tb."year" = 2021
+group by cls."Customer ID", "SLA", cls."year", customer_budget
