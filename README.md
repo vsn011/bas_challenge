@@ -131,38 +131,21 @@ E01	S05	4	2021-12-24 00:00:00
 E02	S05	5	2021-12-04 00:00:00		
 
 
+5 SLAs  by budget utilization for June 2021: 
+
+S05	2021	11900	3818	3.12
+S03	2021	3850	1250	3.08
+S01	2021	11200	8818	1.27
+S02	2021	3850	5458	0.71
+S04	2021	7000	13333	0.53
 
 
 
+Budget utilization per SLA in 2021 for the Customer with lowest Budget utilization rate in 2020
 
-Budget utilization per SLA in 2021 for the Customer with lowest Budget utilization rate in 2020: 
+Customer with the lowest Budget utilization rate in 2020 is C01. Budget utilization rate of this Customer per SLA for 20201 is: 
 C01	S04	2021	72800	105600	0.69
 C01	S05	2021	85400	37800	2.26
 
-SELECT 
-cls."Customer ID",
-"SLA", 
-cls."year",
-SUM(booked_amount) as used_budget,
-customer_budget,
-round(SUM(booked_amount)/ customer_budget, 2) as utilization_rate
-FROM homework.timebooking_staging tb
-inner join homework.sla_staging cls on cls."SLA ID" = tb."SLA" and tb."Date" between cls."StartDate" and cls."EndDate" 
-inner join  (
-select  "Customer ID"  from (
-SELECT 
-cls."Customer ID",
-cls."year",
-sum(booked_amount) as booked_amount,
-customer_budget,
-round(SUM(booked_amount)/ customer_budget, 2) as utilization_rate
-FROM homework.timebooking_staging tb
-inner join homework.sla_staging cls on cls."SLA ID" = tb."SLA" and tb."Date" between cls."StartDate" and cls."EndDate"
-where to_char(tb."Date", 'YYYY') = '2020'
-group by cls."Customer ID", cls."year", customer_budget
-) t
-order by  utilization_rate asc
-limit 1
-) p on p."Customer ID" = cls."Customer ID" 
-where tb."year" = 2021
-group by cls."Customer ID", "SLA", cls."year", customer_budget
+For detailed code see worst_customer_2020.sql 
+
